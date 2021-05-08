@@ -1,7 +1,7 @@
 import torch.nn as nn
 from mmcv import build_from_cfg
 
-from .registry import BACKBONES, COMPONENTS, LOSSES, MODELS
+from .registry import BACKBONES, COMPONENTS, LOSSES, MODELS, HEADS
 
 
 def build(cfg, registry, default_args=None):
@@ -38,6 +38,14 @@ def build_component(cfg):
     """
     return build(cfg, COMPONENTS)
 
+def build_head(cfg):
+    """Build head.
+
+    Args:
+        cfg (dict): Configuration for building head.
+    """
+    return build(cfg, HEADS)
+
 
 def build_loss(cfg):
     """Build loss.
@@ -57,3 +65,4 @@ def build_model(cfg, train_cfg=None, test_cfg=None):
         test_cfg (dict): Testing configuration. Default: None.
     """
     return build(cfg, MODELS, dict(train_cfg=train_cfg, test_cfg=test_cfg))
+

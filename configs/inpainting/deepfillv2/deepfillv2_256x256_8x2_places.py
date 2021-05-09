@@ -128,28 +128,28 @@ train_pipeline = [
 
 test_pipeline = train_pipeline
 
-data_root = 'data/places365'
+data_root = 'data/places365_standard'
 
 data = dict(
     workers_per_gpu=4,
-    train_dataloader=dict(samples_per_gpu=2, drop_last=True),
+    train_dataloader=dict(samples_per_gpu=8, drop_last=True),
     val_dataloader=dict(samples_per_gpu=1),
     test_dataloader=dict(samples_per_gpu=1),
     train=dict(
         type=dataset_type,
-        ann_file=f'{data_root}/train_places_img_list_total.txt',
+        ann_file=f'{data_root}/train.txt',
         data_prefix=data_root,
         pipeline=train_pipeline,
         test_mode=False),
     val=dict(
         type=dataset_type,
-        ann_file=f'{data_root}/val_places_img_list.txt',
+        ann_file=f'{data_root}/val.txt',
         data_prefix=data_root,
         pipeline=test_pipeline,
         test_mode=True),
     test=dict(
         type=dataset_type,
-        ann_file=(f'{data_root}/val_places_img_list.txt'),
+        ann_file=(f'{data_root}/val.txt'),
         data_prefix=data_root,
         pipeline=test_pipeline,
         test_mode=True))
@@ -164,8 +164,8 @@ log_config = dict(
     interval=100,
     hooks=[
         dict(type='TextLoggerHook', by_epoch=False),
-        # dict(type='TensorboardLoggerHook'),
-        dict(type='PaviLoggerHook', init_kwargs=dict(project='mmedit'))
+        dict(type='TensorboardLoggerHook'),
+        # dict(type='PaviLoggerHook', init_kwargs=dict(project='mmedit'))
     ])
 
 visual_config = dict(
@@ -184,7 +184,7 @@ total_iters = 1000003
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = './work_dirs/test_pggan'
-load_from = None
+load_from = 'models/deepfillv2_256x256_8x2_places_20200619-10d15793.pth'
 resume_from = None
 workflow = [('train', 10000)]
 exp_name = 'deepfillv2_256x256_8x2_places'

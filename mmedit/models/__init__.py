@@ -5,7 +5,7 @@ from .builder import (build, build_backbone, build_component, build_loss,
 from .common import *  # noqa: F401, F403
 from .components import *  # noqa: F401, F403
 from .inpaintors import (DeepFillv1Inpaintor, GLInpaintor, OneStageInpaintor,
-                         PConvInpaintor, TwoStageInpaintor)
+                         PConvInpaintor, TwoStageInpaintor, SwinInpaintor)
 from .losses import *  # noqa: F401, F403
 from .mattors import DIM, GCA, BaseMattor, IndexNet
 from .registry import BACKBONES, COMPONENTS, LOSSES, MODELS, HEADS
@@ -19,5 +19,5 @@ __all__ = [
     'BACKBONES', 'COMPONENTS', 'LOSSES', 'BaseMattor', 'DIM', 'MODELS',
     'GLInpaintor', 'PConvInpaintor', 'SRGAN', 'ESRGAN', 'GCA',
     'TwoStageInpaintor', 'IndexNet', 'DeepFillv1Inpaintor', 'Pix2Pix',
-    'CycleGAN'
+    'CycleGAN', 'SwinInpaintor'
 ]

@@ -494,7 +494,8 @@ class SwinTransformer(nn.Module):
                  patch_norm=True,
                  out_indices=(0, 1, 2, 3),
                  frozen_stages=-1,
-                 use_checkpoint=False):
+                 use_checkpoint=False,
+                 pretrained=None):
         super().__init__()
 
         self.pretrain_img_size = pretrain_img_size
@@ -504,6 +505,7 @@ class SwinTransformer(nn.Module):
         self.patch_norm = patch_norm
         self.out_indices = out_indices
         self.frozen_stages = frozen_stages
+        self.pretrained = pretrained
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -551,6 +553,9 @@ class SwinTransformer(nn.Module):
             layer = norm_layer(num_features[i_layer])
             layer_name = f'norm{i_layer}'
             self.add_module(layer_name, layer)
+
+        if self.pretrained is not None:
+            self.init_weights(self.pretrained)
 
         self._freeze_stages()
 

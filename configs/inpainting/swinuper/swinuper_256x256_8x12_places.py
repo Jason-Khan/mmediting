@@ -1,8 +1,9 @@
-norm_cfg = dict(type='SyncBN', requires_grad=True)
+norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
-    type='GLInpaintor',
+    type='SwinInpaintor',
+    disc_input_with_mask=True,
     encdec=dict(
-        type='EncoderDecoder',
+        type='SwinuperEncoderDecoder',
         pretrained=None,
         backbone=dict(
             type='SwinTransformer',
@@ -19,7 +20,9 @@ model = dict(
             ape=False,
             patch_norm=True,
             out_indices=(0, 1, 2, 3),
-            use_checkpoint=False),
+            use_checkpoint=False,
+            pretrained='/home/wangk/inpaint/mmediting/models/swin_tiny_patch4_window7_224.pth'
+        ),
         decode_head=dict(
             type='UPerHead',
             in_channels=[96, 192, 384, 768],
@@ -27,64 +30,40 @@ model = dict(
             pool_scales=(1, 2, 3, 6),
             channels=512,
             dropout_ratio=0.1,
-            num_classes=19,
+            num_classes=3,
             norm_cfg=norm_cfg,
             align_corners=False,
-            loss_decode=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
-        auxiliary_head=dict(
-            type='FCNHead',
-            in_channels=384,
-            in_index=2,
-            channels=256,
-            num_convs=1,
-            concat_input=False,
-            dropout_ratio=0.1,
-            num_classes=19,
-            norm_cfg=norm_cfg,
-            align_corners=False,
-            loss_decode=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
-        # model training and testing settings
-        train_cfg=dict(),
-        test_cfg=dict(mode='whole')),
+            loss_decode=dict(),
+        ),
+    ),
     disc=dict(
-        type='GLDiscs',
-        global_disc_cfg=dict(
-            in_channels=3,
-            max_channels=512,
-            fc_in_channels=512 * 4 * 4,
-            fc_out_channels=1024,
-            num_convs=6,
-            norm_cfg=dict(type='SyncBN'),
-        ),
-        local_disc_cfg=dict(
-            in_channels=3,
-            max_channels=512,
-            fc_in_channels=512 * 4 * 4,
-            fc_out_channels=1024,
-            num_convs=5,
-            norm_cfg=dict(type='SyncBN'),
-        ),
+        type='MultiLayerDiscriminator',
+        in_channels=4,
+        max_channels=256,
+        fc_in_channels=None,
+        num_convs=6,
+        norm_cfg=None,
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.2),
+        out_act_cfg=dict(type='LeakyReLU', negative_slope=0.2),
+        with_spectral_norm=True,
     ),
     loss_gan=dict(
         type='GANLoss',
-        gan_type='vanilla',
-        loss_weight=0.001,
+        gan_type='hinge',
+        loss_weight=0.1,
     ),
     loss_l1_hole=dict(
         type='L1Loss',
         loss_weight=1.0,
     ),
+    loss_l1_valid=dict(
+        type='L1Loss',
+        loss_weight=1.0,
+    ),
     pretrained=None)
 
-train_cfg = dict(
-    disc_step=1,
-    iter_tc=90000,
-    iter_td=100000,
-    start_iter=350000,
-    local_size=(128, 128))
-test_cfg = dict(metrics=['l1'])
+train_cfg = dict(disc_step=1)
+test_cfg = dict(metrics=['l1', 'psnr', 'ssim'])
 
 dataset_type = 'ImgInpaintingDataset'
 input_shape = (256, 256)
@@ -93,11 +72,13 @@ train_pipeline = [
     dict(type='LoadImageFromFile', key='gt_img'),
     dict(
         type='LoadMask',
-        mask_mode='bbox',
+        mask_mode='irregular',
         mask_config=dict(
-            max_bbox_shape=(128, 128),
-            max_bbox_delta=40,
-            min_margin=20,
+            num_vertexes=(4, 10),
+            max_angle=6.0,
+            length_range=(20, 128),
+            brush_width=(10, 45),
+            area_ratio_range=(0.15, 0.65),
             img_shape=input_shape)),
     dict(
         type='Crop',
@@ -120,40 +101,45 @@ train_pipeline = [
     dict(type='GetMaskedImage'),
     dict(
         type='Collect',
-        keys=['gt_img', 'masked_img', 'mask', 'mask_bbox'],
+        keys=['gt_img', 'masked_img', 'mask'],
         meta_keys=['gt_img_path']),
-    dict(type='ImageToTensor', keys=['gt_img', 'masked_img', 'mask']),
-    dict(type='ToTensor', keys=['mask_bbox'])
+    dict(type='ImageToTensor', keys=['gt_img', 'masked_img', 'mask'])
 ]
 
 test_pipeline = train_pipeline
 
-data_root = 'data/places365'
+data_root = 'data/places365_standard'
 
 data = dict(
     workers_per_gpu=4,
-    train_dataloader=dict(samples_per_gpu=12, drop_last=True),
+    train_dataloader=dict(samples_per_gpu=2, drop_last=True),
     val_dataloader=dict(samples_per_gpu=1),
     test_dataloader=dict(samples_per_gpu=1),
     train=dict(
         type=dataset_type,
-        ann_file=f'{data_root}/train_places_img_list_total.txt',
+        ann_file=f'{data_root}/train.txt',
         data_prefix=data_root,
         pipeline=train_pipeline,
         test_mode=False),
     val=dict(
         type=dataset_type,
-        ann_file=f'{data_root}/val_places_img_list.txt',
+        ann_file=f'{data_root}/val.txt',
+        data_prefix=data_root,
+        pipeline=test_pipeline,
+        test_mode=True),
+    test=dict(
+        type=dataset_type,
+        ann_file=(f'{data_root}/val.txt'),
         data_prefix=data_root,
         pipeline=test_pipeline,
         test_mode=True))
 
 optimizers = dict(
-    generator=dict(type='Adam', lr=0.0004), disc=dict(type='Adam', lr=0.0004))
+    generator=dict(type='Adam', lr=0.0001), disc=dict(type='Adam', lr=0.0001))
 
 lr_config = dict(policy='Fixed', by_epoch=False)
 
-checkpoint_config = dict(by_epoch=False, interval=50000)
+checkpoint_config = dict(by_epoch=False, interval=1000)
 log_config = dict(
     interval=100,
     hooks=[
@@ -167,7 +153,7 @@ visual_config = dict(
     output_dir='visual',
     interval=1000,
     res_name_list=[
-        'gt_img', 'masked_img', 'fake_res', 'fake_img', 'fake_gt_local'
+        'gt_img', 'masked_img', 'fake_res', 'fake_img'
     ],
 )
 
@@ -176,9 +162,9 @@ evaluation = dict(interval=50000)
 total_iters = 500002
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = None
+work_dir = './work_dirs/train_swinuper_gl'
 load_from = None
 resume_from = None
 workflow = [('train', 10000)]
-exp_name = 'gl_places'
+exp_name = 'swinuper_gl'
 find_unused_parameters = False

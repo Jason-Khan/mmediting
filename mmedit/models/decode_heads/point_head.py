@@ -31,7 +31,7 @@ def calculate_uncertainty(seg_logits):
     return (top2_scores[:, 1] - top2_scores[:, 0]).unsqueeze(1)
 
 
-@HEADS.register_module()
+# @HEADS.register_module()
 class PointHead(BaseCascadeDecodeHead):
     """A mask point head use in PointRend.
 

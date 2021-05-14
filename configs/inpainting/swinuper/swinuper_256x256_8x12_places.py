@@ -1,4 +1,4 @@
-norm_cfg = dict(type='BN', requires_grad=True)
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='SwinInpaintor',
     disc_input_with_mask=True,
@@ -21,14 +21,14 @@ model = dict(
             patch_norm=True,
             out_indices=(0, 1, 2, 3),
             use_checkpoint=False,
-            pretrained='/home/wangk/inpaint/mmediting/models/swin_tiny_patch4_window7_224.pth'
+            # pretrained='/home/wangk/inpaint/mmediting/models/swin_tiny_patch4_window7_224.pth'
         ),
         decode_head=dict(
             type='UPerHead',
             in_channels=[96, 192, 384, 768],
             in_index=[0, 1, 2, 3],
             pool_scales=(1, 2, 3, 6),
-            channels=512,
+            channels=192,
             dropout_ratio=0.1,
             num_classes=3,
             norm_cfg=norm_cfg,
@@ -39,7 +39,7 @@ model = dict(
     disc=dict(
         type='MultiLayerDiscriminator',
         in_channels=4,
-        max_channels=256,
+        max_channels=192,
         fc_in_channels=None,
         num_convs=6,
         norm_cfg=None,
@@ -139,7 +139,7 @@ optimizers = dict(
 
 lr_config = dict(policy='Fixed', by_epoch=False)
 
-checkpoint_config = dict(by_epoch=False, interval=1000)
+checkpoint_config = dict(by_epoch=False, interval=5000)
 log_config = dict(
     interval=100,
     hooks=[
@@ -159,12 +159,13 @@ visual_config = dict(
 
 evaluation = dict(interval=50000)
 
-total_iters = 500002
+total_iters = 500000
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/train_swinuper_gl'
+work_dir = './work_dirs/train_swinuper'
 load_from = None
-resume_from = None
+resume_from = work_dir+'/latest.pth'
+# resume_from = None
 workflow = [('train', 10000)]
-exp_name = 'swinuper_gl'
+exp_name = 'swinuper'
 find_unused_parameters = False
